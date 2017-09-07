@@ -103,9 +103,10 @@ Tip: You will have to do identical work for both data sets, so to save time on t
 
 
 ```{r}
-?sapply
-?gsub
-
+#Using gsub to remove all dots
+demdata$ID = gsub("\\.", "", demdata$ID)
+uttdata$ID = gsub("\\.", "", uttdata$ID)
+worddata$ID = gsub("\\.", "", worddata$ID)
 ```
 
 2d. Now that the nitty gritty details of the different data sets are fixed, we want to make a subset of each data set only containig the variables that we wish to use in the final data set.
@@ -123,8 +124,15 @@ The variables we need are: Child.ID, Visit, Ethnicity, Diagnosis, Gender, Age, A
 It would be smart to rename the MullenRaw and ExpressiveLangRaw into something you can remember (i.e. nonVerbalIQ, verbalIQ)
 
 ```{r}
+library(dplyr)
+#Using select to create subsets of the data containing only the wanted variables
+demsubdata = select(demdata, ID, Visit, Ethnicity, Diagnosis, Gender, Age, ADOS, MullenRaw, ExpressiveLangRaw)
+uttsubdata = select(uttdata, ID, Visit, MOT_MLU, MOT_LUstd, CHI_MLU, CHI_LUstd)
+wordsubdata = select(worddata, ID, Visit, types_MOT, types_CHI, tokens_MOT, tokens_CHI)
 
-
+#Renaming MullenRaw and ExpressiveLangRaw
+names(demsubdata)[names(demsubdata)=="MullenRaw"] = "nonVerbalIQ"
+names(demsubdata)[names(demsubdata)=="ExpressiveLangRaw"] = "verbalIQ"
 ```
 
 2e. Finally we are ready to merge all the data sets into just one. 
@@ -134,7 +142,9 @@ Tip: Merge only works for two data frames at the time.
 Tip: Check the number of observations in the datasets before and after merging. What is going on?
 
 ```{r}
-
+#Merging datasets by ID and Visit
+utandword = merge(uttsubdata, wordsubdata, by = c("ID", "Visit"))
+joineddata = merge(utandword, demsubdata, by = c("ID", "Visit"))
 ```
 
 Are we done yet?
@@ -148,7 +158,14 @@ Tip: the final dataset should have as many rows as the the old one.
 
 
 ```{r}
-
+#Creating subset with only the first visit
+visit1 = subset(joineddata[joineddata$Visit == "1",])
+#Selecting only the relevant variables
+visit1filter = select(visit1, ID, ADOS, nonVerbalIQ, verbalIQ)
+#Removing the variables from the joined dataset
+joineddata2 = joineddata[-15:-17]
+#Merging the two datasets 
+joineddata3 = merge(joineddata2, visit1filter, by = "ID")
 ```
 
 Now, we are almost ready to actually start working with the data. However, here are some additional finishing touches:
@@ -162,15 +179,30 @@ Tip: as.numeric() might be a useful function, but not alone.
 Tip: Google "how to rename levels in R".
 
 ```{r}
+##Anonomyzing ID by enumerating it
+#Making ID a factor
+joineddata3$ID = as.factor(joineddata3$ID)
+#Renaming the levels as 1 through length of levels
+levels(joineddata3$ID) = 1:length(levels(joineddata3$ID))
 
+#Making Visit numeric 
+joineddata3$Visit = as.numeric(joineddata3$Visit)
 
+#Making Gender a factor and renaming the levels
+joineddata3$Gender = as.factor(joineddata3$Gender)
+library(plyr)
+joineddata3$Gender = revalue(joineddata3$Gender, c("1"="F", "2"="M"))
+
+#Renaming the factors of Diagnosis
+joineddata3$Diagnosis = revalue(joineddata3$Diagnosis, c("A"="ASD", "B"="TD"))
 ```
 
 
 Save the data set using into a csv file. Hint: look into write.csv()
 
 ```{r}
-
+?write.csv
+write.csv(joineddata3, file = "Autismdata.csv")
 ```
 
 
