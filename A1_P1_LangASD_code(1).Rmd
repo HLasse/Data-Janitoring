@@ -145,6 +145,8 @@ Tip: Check the number of observations in the datasets before and after merging. 
 #Merging datasets by ID and Visit
 utandword = merge(uttsubdata, wordsubdata, by = c("ID", "Visit"))
 joineddata = merge(utandword, demsubdata, by = c("ID", "Visit"))
+
+#Can use all = TRUE to keep all values
 ```
 
 Are we done yet?
@@ -201,7 +203,6 @@ joineddata3$Diagnosis = revalue(joineddata3$Diagnosis, c("A"="ASD", "B"="TD"))
 Save the data set using into a csv file. Hint: look into write.csv()
 
 ```{r}
-?write.csv
 write.csv(joineddata3, file = "Autismdata.csv")
 ```
 
@@ -218,7 +219,24 @@ List all kids who:
 3. have not completed all trials. Tip: Use pipes to solve this
 
 ```{r}
+library(tidyverse)
+data = read.csv("Autismdata.csv")
+#removing useless column
+data$X = NULL
 
+#Creating variable of children with MLU over 2.7
+chiMLU = filter(data, CHI_MLU > 2.7)
+#Printing IDs
+unique(chiMLU$ID)
+
+#Creating variable of children with MLU under 1.5 at their first visit
+chiMLUvisit = filter(data, CHI_MLU < 1.5, Visit == 1)
+#Printing IDs
+chiMLUvisit$ID
+
+?group_by
+missed = data %>% group_by(ID) %>% tally()
+filter(missed, n < 6)
 
 ```
 
@@ -229,8 +247,18 @@ USING ARRANGE
 2. Sort kids to find the kid who produced the least amount of words on the 1st visit.
 
 ```{r}
+#Creating a subset of the data containing only the 6th visit
+visit6 = subset(data[data$Visit == 6,])
+#Arranging the data so the highest value of tokens_CHI is at the top 
+arrangedvisit6 = arrange(visit6, desc(tokens_CHI))
+arrangedvisit6[1,]
+#Child ID 55 produced the most words on the 6th visit
 
-
+#Creating a subset of the data containing only the 1st visit
+visit1 = subset(data[data$Visit == 1,])
+arrangedvisit1 = arrange(visit1, tokens_CHI)
+arrangedvisit1[1,]
+#Child ID 57 produced the least words on the 1st visit
 ```
 
 USING SELECT
@@ -239,6 +267,12 @@ USING SELECT
 2. What happens if you include the name of a variable multiple times in a select() call?
 
 ```{r}
+#Subset only including kids with ASD
+asd = subset(data[data$Diagnosis == "ASD",])
+#
+subs = select(asd, ID, Visit, Diagnosis, CHI_MLU, tokens_CHI )
+subs2 = select(data, ID, Visit, Diagnosis, CHI_MLU, Diagnosis, tokens_CHI )
+#nothing happens if you include the same variable multiple times? 
 
 ```
 
