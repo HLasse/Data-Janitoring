@@ -203,7 +203,7 @@ joineddata3$Diagnosis = revalue(joineddata3$Diagnosis, c("A"="ASD", "B"="TD"))
 Save the data set using into a csv file. Hint: look into write.csv()
 
 ```{r}
-write.csv(joineddata3, file = "Autismdata.csv")
+#write.csv(joineddata3, file = "Autismdata.csv")
 ```
 
 
@@ -219,24 +219,36 @@ List all kids who:
 3. have not completed all trials. Tip: Use pipes to solve this
 
 ```{r}
-library(tidyverse)
+#library(tidyverse)
 library(dplyr)
 data = read.csv("Autismdata.csv")
 #removing useless column
 data$X = NULL
 
-
-#Creating variable of children with MLU over 2.7
+#Finding children who had a MLU over 2.7 in any of their visits
 chiMLU = filter(data, CHI_MLU > 2.7) 
 #Printing IDs
 unique(chiMLU$ID)
+#Getting total number of children who scored over 2.7 in any of their visits
+length(unique(chiMLU$ID))
+
+#Finding children who had a mean MLU over 2.7 across visits
+meanCHImlu= data %>% 
+      group_by(ID) %>%
+      summarise(meanMLU = mean(CHI_MLU)) %>%
+      filter(meanMLU > 2.7)
+meanCHImlu
+#Getting total number of children with a mean MLU over 2.7 across visits
+length(meanCHImlu$ID)
 
 #Creating variable of children with MLU under 1.5 at their first visit
 chiMLUvisit = filter(data, CHI_MLU < 1.5, Visit == 1)
 #Printing IDs
 chiMLUvisit$ID
+#Getting number of children
+length(chiMLUvisit$ID)
 
-#Find ID of those who did not complete all trials
+#Find ID of those who did not complete all trials by tallying up how many each ID completed. If less than six, they missed some
 missed = data %>% 
       group_by(ID) %>% 
       tally() %>% 
@@ -276,7 +288,7 @@ asd = subset(data[data$Diagnosis == "ASD",])
 #
 subs = select(asd, ID, Visit, Diagnosis, CHI_MLU, tokens_CHI )
 subs2 = select(data, ID, Visit, Diagnosis, CHI_MLU, Diagnosis, tokens_CHI )
-#nothing happens if you include the same variable multiple times? 
+#nothing really happens if you include the same variable multiple times
 
 ```
 
@@ -298,7 +310,10 @@ AvgChildWords = data %>%
               group_by(ID) %>%
               summarise(CHIAverageWords = mean(tokens_CHI))
 #Adding the new colomn
-data = merge(data, AvgChildWords, by = "ID")
+data = merge(data, AvgChildWords)
 
+#By keeping all the data we can track things such as evolution in MLU/tokens over time, which would be lost by solely relying on averages. The ability to compare across specific trials is also lost.
 
+#Writing the new dataframe to another file
+#write.csv(data, "AutismWithAvg.csv")
 ```
