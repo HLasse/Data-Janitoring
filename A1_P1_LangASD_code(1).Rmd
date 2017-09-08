@@ -234,10 +234,9 @@ chiMLUvisit = filter(data, CHI_MLU < 1.5, Visit == 1)
 #Printing IDs
 chiMLUvisit$ID
 
-?group_by
-missed = data %>% group_by(ID) %>% tally()
-filter(missed, n < 6)
-
+#Find ID of those who did not complete all trials
+missed = data %>% group_by(ID) %>% tally() %>% filter(n < 6)
+missed
 ```
 
 
