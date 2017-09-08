@@ -220,12 +220,14 @@ List all kids who:
 
 ```{r}
 library(tidyverse)
+library(dplyr)
 data = read.csv("Autismdata.csv")
 #removing useless column
 data$X = NULL
 
+
 #Creating variable of children with MLU over 2.7
-chiMLU = filter(data, CHI_MLU > 2.7)
+chiMLU = filter(data, CHI_MLU > 2.7) 
 #Printing IDs
 unique(chiMLU$ID)
 
@@ -235,7 +237,10 @@ chiMLUvisit = filter(data, CHI_MLU < 1.5, Visit == 1)
 chiMLUvisit$ID
 
 #Find ID of those who did not complete all trials
-missed = data %>% group_by(ID) %>% tally() %>% filter(n < 6)
+missed = data %>% 
+      group_by(ID) %>% 
+      tally() %>% 
+      filter(n < 6)
 missed
 ```
 
@@ -282,6 +287,18 @@ USING MUTATE, SUMMARISE and PIPES
 3. The solution to task above enables us to assess the average amount of words produced by each child. Why don't we just use these average values to describe the language production of the children? What is the advantage of keeping all the data?
 
 ```{r}
+#Making ID a factor
+data$ID = as.factor(data$ID)
+
+#Creating column with the grand mean of words spoken by all children
+data = mutate(data, GrandChildAvg = mean(tokens_CHI))
+
+#Grouping the data by ID then using summarise to get the average number of words spoken for each child
+AvgChildWords = data %>% 
+              group_by(ID) %>%
+              summarise(CHIAverageWords = mean(tokens_CHI))
+#Adding the new colomn
+data = merge(data, AvgChildWords, by = "ID")
 
 
 ```
