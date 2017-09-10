@@ -178,6 +178,7 @@ Tip: as.numeric() might be a useful function, but not alone.
 * Note that visit is (probably) not defined as numeric. Turn it into a numeric variable
 
 * In order to make it easier to work with this nice, clean dataset in the future, it is practical to make sure the variables have sensible values. E.g. right now gender is marked 1 and 2, but in two weeks you will not be able to remember, which gender were connected to which number, so change the values from 1 and 2 to F and M in the gender variable. For the same reason, you should also change the values of Diagnosis from A and B to ASD (autism spectrum disorder) and TD (typically developing). 
+
 Tip: Google "how to rename levels in R".
 
 ```{r}
@@ -192,11 +193,12 @@ joineddata3$Visit = as.numeric(joineddata3$Visit)
 
 #Making Gender a factor and renaming the levels
 joineddata3$Gender = as.factor(joineddata3$Gender)
-library(plyr)
-joineddata3$Gender = revalue(joineddata3$Gender, c("1"="F", "2"="M"))
+
+joineddata3$Gender = recode(joineddata3$Gender, "1" = "F", "2" = "M")
+
 
 #Renaming the factors of Diagnosis
-joineddata3$Diagnosis = revalue(joineddata3$Diagnosis, c("A"="ASD", "B"="TD"))
+joineddata3$Diagnosis = recode(joineddata3$Diagnosis, "A"="ASD", "B"="TD")
 ```
 
 
@@ -219,8 +221,7 @@ List all kids who:
 3. have not completed all trials. Tip: Use pipes to solve this
 
 ```{r}
-#library(tidyverse)
-library(dplyr)
+library(tidyverse)
 data = read.csv("Autismdata.csv")
 #removing useless column
 data$X = NULL
@@ -254,6 +255,12 @@ missed = data %>%
       tally() %>% 
       filter(n < 6)
 missed
+
+#If the CHI_MLU was NA during any of the visits, the previous code would still have counted it as a trial. This line of code
+#counts how many trials were not NA. For this dataset the result is the same, but might be useful for future use
+
+#group_by(data, ID) %>% summarise(count = sum(!is.na(CHI_MLU))) %>% filter(count < 6)
+
 ```
 
 
@@ -299,9 +306,6 @@ USING MUTATE, SUMMARISE and PIPES
 3. The solution to task above enables us to assess the average amount of words produced by each child. Why don't we just use these average values to describe the language production of the children? What is the advantage of keeping all the data?
 
 ```{r}
-#Making ID a factor
-data$ID = as.factor(data$ID)
-
 #Creating column with the grand mean of words spoken by all children
 data = mutate(data, GrandChildAvg = mean(tokens_CHI))
 
