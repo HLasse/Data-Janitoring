@@ -123,6 +123,7 @@ summary(agetest)
 summary(data[data$Diagnosis == 'ASD',]$Gender)
 summary(data[data$Diagnosis == 'TD',]$Gender)
 
+
 #Running a general linear model on gender to test for differences
 genderstats = glm(Gender~Diagnosis, family = "binomial", data = data)
 summary(genderstats)
@@ -135,19 +136,26 @@ summary(data[data$Diagnosis == 'TD',]$Ethnicity)
 #Two different spellings of Bangladeshi - fixing it
 levels(data$Ethnicity)[levels(data$Ethnicity)=="Bangledeshi"] <- "Bangladeshi"
 
+#running GLM to test for differences
+ethnicitym = glm(Ethnicity ~ Diagnosis, family = "binomial", data = data)
+summary(ethnicitym)
+#not significant
+
 #Boxplot of child MLU by visit and diagnosis
-ggplot(data, aes(x=Visit, y=CHI_MLU, color = Diagnosis)) + 
+ggplot(data, aes(Visit, CHI_MLU, color = Diagnosis)) + 
   geom_boxplot()
 
 #Boxplot of mother MLU by visit and diagnosis
-ggplot(data, aes(x=Visit, y=CHI_LUstd, color = Diagnosis)) + 
+ggplot(data, aes(Visit, MOT_MLU, color = Diagnosis)) + 
   geom_boxplot()
 
-#seems to be a trend for both mother and child MLU to be higher for TD than ASD kids
+#seems to be a trend for both mother and child MLU to be higher for TD than ASD kids. ASD are far more spread out
 
 #Converting visit back to integer to be able to use the geom_smooth() function
 data$Visit = as.integer(data$Visit)
-ggplot(data, aes(x=CHI_MLU, y=MOT_MLU, color = Diagnosis)) + geom_point() + geom_smooth(method = 'lm')
+ggplot(data, aes(CHI_MLU, MOT_MLU, color = Diagnosis)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm')
 #There seems to be a trend
 
 #Violinplots of verbal and non-verbal IQ
@@ -161,6 +169,9 @@ ggplot(data, aes(Diagnosis, nonVerbalIQ)) +
 ggplot(data, aes(Diagnosis, ADOS)) + 
   geom_violin()
 #makes sense..
+
+ggplot(data, aes(Diagnosis, tokens_CHI)) + 
+  geom_violin()
 
 ```
 
@@ -233,6 +244,29 @@ Linguistic development of children MLU is affected by ... [COMPLETE]
 ### Hypothesis: Parental MLU changes: i) over time, ii) according to diagnosis
 
 ```{r}
+#scatterplot
+ggplot(data, aes(Visit, MOT_MLU, color = Diagnosis)) +
+  geom_point() +
+  geom_jitter() +
+  geom_smooth(method = 'lm')
+
+#line plot showing means
+ggplot(data, aes(Visit, MOT_MLU, color = Diagnosis))+
+  geom_point(stat = 'summary', fun.y=mean)+
+  stat_summary(fun.y=mean, geom="line", aes(group = Diagnosis))
+
+
+#creating the model with visit and diagnosis as fixed effects and ID as random effect (intercept)
+m2 = lmer(MOT_MLU ~ Visit + Diagnosis + (1+Visit|ID), data, REML =F)
+summary(m2)
+r.squaredGLMM(m2)
+
+
+#comparing it with a null model
+mnull1 = lmer(MOT_MLU ~  (1+Visit|Diagnosis), data, REML=F)
+r.squaredGLMM(mnull1)
+anova(mnull1, m2)
+#How can the model be a significant improvement when there is practically no change in R2C?
 
 ```
 
@@ -244,7 +278,11 @@ Your task now is to figure out how to best describe the children linguistic traj
 
 
 ```{r}
-
+#It is all so correlated :( :( 
+#Can we use regularization? How? 
+m3 =  lmer(CHI_MLU ~ Visit + MOT_MLU + CHIAverageWords + (1+Visit|ID), data, REML =F)
+summary(m3)
+r.squaredGLMM(m3)
 ```
 
 REPORT OF THE RESULTS
