@@ -170,7 +170,23 @@ ggplot(data, aes(Diagnosis, ADOS)) +
   geom_violin()
 #makes sense..
 
+#More violins
 ggplot(data, aes(Diagnosis, tokens_CHI)) + 
+  geom_violin()
+
+ggplot(data, aes(Diagnosis, types_CHI)) + 
+  geom_violin()
+
+ggplot(data, aes(Diagnosis, tokens_MOT)) + 
+  geom_violin()
+
+ggplot(data, aes(Diagnosis, types_MOT)) + 
+  geom_violin()
+
+ggplot(data, aes(Diagnosis, CHI_LUstd)) + 
+  geom_violin()
+
+ggplot(data, aes(Diagnosis, MOT_LUstd)) + 
   geom_violin()
 
 ```
@@ -213,7 +229,7 @@ How would you evaluate whether the model is a good model?
 
 ```{r}
 #By comparing it with a null model
-mnull = lmer(CHI_MLU ~  (1+Visit|Diagnosis), data, REML=F)
+mnull = lmer(CHI_MLU ~  (1+Visit|ID), data, REML=F)
 r.squaredGLMM(mnull)
 anova(mnull, m1)
 #The model is a significant improvement to the null model. 
@@ -227,7 +243,8 @@ Remember: a growth curve model assesses whether changes in time can be described
 First build the different models, then compare them to see which one is better
 
 ```{r}
-#???
+data$Visit = as.ordered(data$Visit)
+growthm = lmer(CHI_MLU ~ Visit + Diagnosis + (1+Visit|ID), data)
 ```
 
 Exciting right?
