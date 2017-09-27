@@ -35,7 +35,8 @@ How did your models from last time perform? In this exercise you have to compare
 [HERE GOES YOUR ANSWER]
 
 ```{r}
-p_load(tidyverse, lme4, lmerTest, stringr, modelr, MuMIn, caret, groupdata2)
+p_load(tidyverse, lme4, lmerTest, stringr, modelr, MuMIn, caret, Metrics,merTools)
+library(groupdata2)
 #Recreating model from last exercise
 #reading training data
 trainingdata = read.csv("AutismWithAvg.csv", sep =",")
@@ -45,7 +46,8 @@ trainingdata$Visit = as.numeric(trainingdata$Visit)
 
 m1 = lmer(CHI_MLU ~ Visit + MOT_MLU + verbalIQ + (1+Visit|ID), trainingdata, REML =F) 
 
-rmse(m1, trainingdata)
+modelr::rmse(m1, trainingdata)
+Metrics::rmse(trainingdata$CHI_MLU, predict(m1, trainingdata, allow.new.levels = T))
 ```
 
 ```{r}
@@ -121,7 +123,15 @@ joineddata3$Diagnosis = recode(joineddata3$Diagnosis, "A"="ASD", "B"="TD")
 
 ```{r}
 testdata = read.csv("Autismtestdata.csv", sep = ",")
-rmse(m1, testdata)
+
+modelr::rmse(m1, testdata)
+Metrics::rmse(testdata$CHI_MLU, predict(m1, testdata, allow.new.levels = T))
+#0.7 - both working the same so far
+
+#Getting prediction intervals
+intervalFit = predictInterval(m1, newdata = testdata)
+intervalFit
+
 ```
 
 ### Exercise 2) Model Selection via Cross-validation (N.B: ChildMLU!)
@@ -144,12 +154,11 @@ In this exercise you have to use cross-validation to calculate the predictive er
 #creating model 
 m2 = lmer(CHI_MLU ~ Visit + Diagnosis + (1+Visit|ID), trainingdata, REML = F)
 
-(r.squaredGLMM(newlm))
 #cv1 <- crossv_kfold(trainingdata, 4)
 #folds = createFolds(trainingdata ,4)
 
 nfolds = 4
-trainingdatafold= fold(trainingdata, k=nfolds, cat_col = "Diagnosis")
+trainingdatafold= fold(trainingdata, k=nfolds, cat_col = "Diagnosis", id_col = "ID")
 
 #trainingdatafold = fold(trainingdata, k=4)
 rmselist = list()
@@ -159,11 +168,60 @@ for (i in 1:nfolds) {
   train = trainingdatafold[trainingdatafold$.folds != i, ]          #set the training set
   validation = trainingdatafold[trainingdatafold$.folds == i,]      #set the validation set
   newlm = lmer(CHI_MLU ~ Visit + Diagnosis + (1+Visit|ID), train, REML = F) #creating the lmer
-  rmselist[i] = rmse(newlm, validation)                             #saving model rmse
+  rmselist[i] = Metrics::rmse(validation$CHI_MLU, predict(newlm, validation, allow.new.levels = T))  #saving model rmse
   r2list[i] = as.data.frame(r.squaredGLMM(newlm))                   #saving r2c and r2m
+  r2list = as.data.frame(r2list)
 }
+
+rowMeans(r2list[1])
 rmselist
 r2list
+
+r2ListToDF = function(r2list) {
+  r2df = as.data.frame(t(as.data.frame(r2list)))
+  colnames(r2df) = c("R2m", "R2c")
+  rownames(r2df) = seq(1:4)
+  r2df = as.data.frame(r2df)
+  print("Mean R2c")
+  print(mean(r2df$R2c))
+  print("Mean R2m")
+  print(mean(r2df$R2m))
+}
+
+```
+
+```{r}
+crossvalidate <- function(data, k, model, dependent){
+#Creating variables for storing performances
+performance = list()
+rmselist = list()
+r2list = list()
+#Creating loop
+for (i in 1:k){
+  train = data[data$.folds != i,]
+  validation = data[data$.folds == i,]
+  model = lmer(model, train, REML = F)
+  rmselist[i] = Metrics::rmse(validation[[dependent]], predict(model, validation, allow.new.levels = T))  #saving model rmse
+  r2list[i] = as.data.frame(r.squaredGLMM(model))                                                         #saving r2c and r2m
+}
+
+r2list = as.data.frame(t(as.data.frame(r2list)))
+colnames(r2list) = c("R2m", "R2c")
+rownames(r2list) = seq(1:k)
+r2list = as.data.frame(r2list)
+
+return(c('RMSE' = rmselist, 'Mean RMSE' = mean(unlist(rmselist)), r2list,  'Mean R2c' =  mean(r2list$R2c), 'Mean R2m' = mean(r2list$R2m)))
+}
+```
+
+```{r}
+m1 = "CHI_MLU ~ Visit + Diagnosis + (1+Visit|ID)"
+crossvalidate(trainingdatafold, nfolds, m1, 'CHI_MLU')
+
+#### IT WORKS - ####
+
+r2ListToDF(r2list)
+mean(unlist(rmselist))
 
 #Function to calculate the mean R2c and R2m across folds
 #There has to be an easier way..
@@ -178,7 +236,76 @@ r2ListToDF = function(r2list) {
   print(mean(r2df$R2m))
 }
 r2ListToDF(r2list)
+mean(unlist(rmselist))
 
+###Testing different models
+#Visit, MOT_MLU and verbalIQ as predictors
+rmselist = list()
+r2list = list()
+
+for (i in 1:nfolds) {
+  train = trainingdatafold[trainingdatafold$.folds != i, ]          #set the training set
+  validation = trainingdatafold[trainingdatafold$.folds == i,]      #set the validation set
+  newlm = lmer(CHI_MLU ~ Visit + MOT_MLU + verbalIQ + (1+Visit|ID), train, REML = F) #creating the lmer
+  rmselist[i] = Metrics::rmse(validation$CHI_MLU, predict(newlm, validation, allow.new.levels = T))  #saving model rmse
+  r2list[i] = as.data.frame(r.squaredGLMM(newlm))                   #saving r2c and r2m
+}
+rmselist
+mean(unlist(rmselist))
+#mean rmse = 0.6
+r2list
+r2ListToDF(r2list)
+#mean R2C = 0.81
+#mean R2m = 0.557
+
+#Visit, Diagnosis, types_CHI and verbalIQ as predictors
+rmselist = list()
+r2list = list()
+
+
+for (i in 1:nfolds) {
+  train = trainingdatafold[trainingdatafold$.folds != i, ]          #set the training set
+  validation = trainingdatafold[trainingdatafold$.folds == i,]      #set the validation set
+  newlm = lmer(CHI_MLU ~ Visit + Diagnosis + types_CHI + verbalIQ + (1+Visit|ID), train, REML = F) #creating the lmer
+  rmselist[i] = Metrics::rmse(validation$CHI_MLU, predict(newlm, validation, allow.new.levels = T))  #saving model rmse
+  r2list[i] = as.data.frame(r.squaredGLMM(newlm))                   #saving r2c and r2m
+}
+rmselist
+mean(unlist(rmselist))
+#mean rmse = 0.477
+r2list
+r2ListToDF(r2list)
+#mean R2c = 0.85
+#mean R2m = 0.75 
+
+#Visit, ADOS, types_CHI and verbalIQ as predictors
+rmselist = list()
+r2list = list()
+fixedef = list()
+
+for (i in 1:nfolds) {
+  train = trainingdatafold[trainingdatafold$.folds != i, ]          #set the training set
+  validation = trainingdatafold[trainingdatafold$.folds == i,]      #set the validation set
+  newlm = lmer(CHI_MLU ~ Visit + types_CHI + verbalIQ + (1+Visit|ID), train, REML = F) #creating the lmer
+  rmselist[i] = Metrics::rmse(validation$CHI_MLU, predict(newlm, validation, allow.new.levels = T))  #saving model rmse
+  r2list[i] = as.data.frame(r.squaredGLMM(newlm))                   #saving r2c and r2m
+  fixedef[i] = as.data.frame(fixef(newlm))                          #just a test
+}
+rmselist
+mean(unlist(rmselist))
+#mean rmse = 0.472
+
+r2list
+r2ListToDF(r2list)
+#mean R2c = 0.85
+#mean R2m = 0.74
+
+#just for fun
+fixedef = as.data.frame(t(as.data.frame(fixedef)))
+colnames(fixedef) = c("Intercept", "Visit", "types_CHI", "verbalIQ")
+rownames(fixedef) = seq(1:4)
+fixedef = as.data.frame(fixedef)
+fixedef
 ```
 
 
@@ -196,6 +323,12 @@ You want to evaluate:
 - how does the child fare compared to the model predictions at Visit 6? Is the child below or above expectations? (tip: use the predict() function on Bernie's data only and compare the prediction with the actual performance of the child)
 
 [HERE GOES YOUR ANSWER]
+```{r}
+#Bernie is the child with ID 2 
+testdata[testdata$ID == "2",]
+#He is 
+```
+
 
 ### OPTIONAL: Exercise 4) Model Selection via Information Criteria
 Another way to reduce the bad surprises when testing a model on new data is to pay close attention to the relative information criteria between the models you are comparing. Let's learn how to do that!

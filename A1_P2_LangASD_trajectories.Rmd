@@ -36,6 +36,14 @@ N.B. The following lines are a summary of the questions to be answered, the step
 
 Describe the participant samples in the dataset (e.g. by diagnosis, age, etc.). Do you think the two groups are well balanced? If not, what do you think was the reason?
 
+Both groups are decently well represented in the sample with 166 children with ASD and 186 TD children. In terms of gender there is no significant difference between the two groups, however there are far more females (295) than males (57). Ethnicity is also relatively well balanced, with the primary ethnic group being white for both ASD and TD. 
+There is a large difference in age, however. The TD children have a relative small spread around a mean 20.37 months (std = 1.48), whereas the ASD children have a mean age of 33 months with a quite large spread (std = 5.59). This difference in age is significant, β = -12.63, t(??????) = -12.32, p < .001. This difference is due to the children being picked according to their linguistic performance at visit 1, but it causes a large age skew in the data. 
+Boxplots of CHI_MLU and MOT_MLU by visit and diagnosis, reveals a tendency for ASD children to have a larger spread in the MLU than TD children. The same trend holds for mothers of ASD children, though not as extreme. 
+The generel trend of ASD children being more spread in their performance holds true for measures of verbalIQ and nonVerbal IQ as well. Violin plot of verbalIQ reveals TD children to be grouped around a middle value, with few outlying datapoints. ASD children are very spread out, with no central tendency. For nonverbal IQ, the ASD children tend to group around a middle value, but there is still a lot of variability and a large spread of the data. TD children clumb together in the middle.
+ADOS score are much higher for ASD children (which makes sense given it's a measure of autistic traits), which values ranging in equal proportion from ~6 to ~21. TD children are mostly at 0 or 1, with a few outlier up to a max score of 5. 
+Violin plots of tokens and types for the children, show a tendency for ASD children to primarily be in the lower range of scores, but with a large spread, with some even scoring as high as the highest scoring TD children. TD are relatively well distributed troughout the range of scores, but less children in the higher values.
+
+In conclusion, the groups are well balanced across demographics such as ethnicity and gender. However, ASD children are significantly older than the TD children. In general, ASD children vary a lot from each other, and have very differing scores across variables. TD children generally lumb together in the middle, without too much spread. 
 [HERE GOES YOUR ANSWER]
 
 ### Exercise 2) Children learning language: the effects of time and ASD
@@ -109,17 +117,20 @@ Describe the characteristics of the two groups of participants and whether the t
 ```{r}
 #Using by to calculate descriptive stats for age. Only interested in age at the first visit
 v1 = subset(data, Visit ==1)
-by(data$Age, data$Diagnosis, stat.desc) 
+by(v1$Age, v1$Diagnosis, stat.desc) 
 #Boxplot of age
 ggplot(v1, aes(Diagnosis, Age)) + 
   geom_boxplot()
 
 #running a linear model to test for age differences
-agetest = lm(Age ~ Diagnosis, data)
+agetest = lm(Age ~ Diagnosis, v1)
 summary(agetest)
 ##TD kids are significantly younger! 
 
+#Checking the distribution of ASD to TD
+summary(data$Diagnosis)
 #checking the gender distribution
+summary(data$Gender)
 summary(data[data$Diagnosis == 'ASD',]$Gender)
 summary(data[data$Diagnosis == 'TD',]$Gender)
 
@@ -204,6 +215,9 @@ Remember to plot the data first and then to run a statistical test.
 - Which variable(s) should be included as random factors?
 
 ```{r}
+#making Visit numeric (otherwise the model will fail if some kids are missing trials)
+data$Visit = as.numeric(data$Visit)
+
 #scatterplot
 ggplot(data, aes(Visit, CHI_MLU, color = Diagnosis)) +
   geom_point() +
@@ -214,7 +228,6 @@ ggplot(data, aes(Visit, CHI_MLU, color = Diagnosis)) +
 ggplot(data, aes(Visit, CHI_MLU, color = Diagnosis))+
   geom_point(stat = 'summary', fun.y=mean)+
   stat_summary(fun.y=mean, geom="line", aes(group = Diagnosis))
-
 
 #creating the model with visit and diagnosis as fixed effects and ID as random effect (intercept)
 m1 = lmer(CHI_MLU ~ Visit + Diagnosis + (1+Visit|ID), data, REML =F)
@@ -280,7 +293,7 @@ r.squaredGLMM(m2)
 
 
 #comparing it with a null model
-mnull1 = lmer(MOT_MLU ~  (1+Visit|Diagnosis), data, REML=F)
+mnull1 = lmer(MOT_MLU ~  (1+Visit|ID), data, REML=F)
 r.squaredGLMM(mnull1)
 anova(mnull1, m2)
 #How can the model be a significant improvement when there is practically no change in R2C?
