@@ -1,6 +1,6 @@
 ---
 title: "A1_P1_Student"
-author: "Céline Carlsen"
+author: "Lasse Hansen"
 date: "29/8/2017"
 output: html_document
 ---
@@ -221,7 +221,7 @@ List all kids who:
 3. have not completed all trials. Tip: Use pipes to solve this
 
 ```{r}
-library(tidyverse)
+library(tidyverse); library(knitr)
 data = read.csv("Autismdata.csv")
 #removing useless column
 data$X = NULL
@@ -238,7 +238,7 @@ meanCHImlu= data %>%
       group_by(ID) %>%
       summarise(meanMLU = mean(CHI_MLU)) %>%
       filter(meanMLU > 2.7)
-meanCHImlu
+meanCHImlu %>% kable()
 #Getting total number of children with a mean MLU over 2.7 across visits
 length(meanCHImlu$ID)
 
@@ -254,8 +254,9 @@ missed = data %>%
       group_by(ID) %>% 
       tally() %>% 
       filter(n < 6)
-missed
+missed %>% kable()
 
+length(missed$ID)
 #If the CHI_MLU was NA during any of the visits, the previous code would still have counted it as a trial. This line of code
 #counts how many trials were not NA. For this dataset the result is the same, but might be useful for future use
 
@@ -294,9 +295,10 @@ USING SELECT
 asd = subset(data[data$Diagnosis == "ASD",])
 #
 subs = select(asd, ID, Visit, Diagnosis, CHI_MLU, tokens_CHI )
-subs2 = select(data, ID, Visit, Diagnosis, CHI_MLU, Diagnosis, tokens_CHI )
+subs2 = select(asd, ID, Visit, Diagnosis, CHI_MLU, Diagnosis, tokens_CHI )
 #nothing really happens if you include the same variable multiple times
-
+subs[1,]
+subs2[1,]
 ```
 
 
