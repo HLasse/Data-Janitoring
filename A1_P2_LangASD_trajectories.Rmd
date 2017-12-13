@@ -129,15 +129,18 @@ by(v1$Age, v1$Diagnosis, stat.desc)
 ggplot(v1, aes(Diagnosis, Age)) + 
   geom_boxplot()
 
+
+
 #running a linear model to test for age differences
 agetest = lm(Age ~ Diagnosis, v1)
 summary(agetest)
 ##TD kids are significantly younger! 
 
 #Checking the distribution of ASD to TD
-summary(data$Diagnosis)
+
+summary(v1$Diagnosis)
 #checking the gender distribution
-summary(data$Gender)
+summary(v1$Gender)
 summary(data[data$Diagnosis == 'ASD',]$Gender)
 summary(data[data$Diagnosis == 'TD',]$Gender)
 
@@ -307,6 +310,7 @@ ggplot(data, aes(Visit, MOT_MLU, color = Diagnosis))+
 m2 = lmer(MOT_MLU ~ Visit + Diagnosis + (1+Visit|ID), data, REML =F)
 summary(m2)
 r.squaredGLMM(m2)
+
 
 m3 = lmer(MOT_MLU ~ Visit * Diagnosis + (1+Visit|ID), data, REML =F)
 summary(m3)

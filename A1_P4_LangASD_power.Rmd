@@ -16,25 +16,30 @@ In this exercise we will assess how many participants we would need to adequatel
 ### Exercise 1
 
 How much power does your study have (if your model estimates are quite right)?
-- [GitHub]Load your dataset, fit your favorite model, assess power for your main effects and interactions of interest.
+- [GitHub]Load your dataset, fit your favorite model, assess power for your main effects and interactions of interest.    The design solutions we present, will be based on TV2 Østjylland’s overall goals, as well as findings from the aforementioned user test.
 - Report the power analysis and comment on what you can (or cannot) use its estimates for.
 
 ```{r}
 p_load(simr, tidyverse, lme4, lmerTest, MASS)
 
-traindata = read.csv("AutismWithAvg.csv", sep = "," )
 
-MLUModel =lmer(CHI_MLU ~ Visit + Diagnosis + verbalIQ + (1 + Visit|ID), traindata, REML=F) 
+traindata = read.csv("AutismWithAvg.csv", sep = "," )
+traindata$Visit = as.numeric(traindata$Visit)
+
+MnoInteraction = lmer(CHI_MLU ~ Visit + Diagnosis + (1 + Visit|ID), traindata, REML=F) 
+MLUModel =lmer(CHI_MLU ~ Visit * Diagnosis + (1 + Visit|ID), traindata, REML=F) 
+
+summary(MnoInteraction)
 summary(MLUModel)
 
-powerV = powerSim(MLUModel,fixed("Visit"),nsim=200) 
-powerD = powerSim(MLUModel,fixed("Diagnosis"),nsim=200)
-powerVIQ = powerSim(MLUModel,fixed("verbalIQ"),nsim=200)
+powerV = powerSim(MnoInteraction,fixed("Visit"),nsim=100) 
+powerD = powerSim(MnoInteraction,fixed("Diagnosis"),nsim=100)
+powerVD = powerSim(MLUModel,fixed("Visit:Diagnosis"),nsim=100)
 
 
-powerV # 100 % power, effect size 0.23
-powerD # 46.5 % power, effect size?
-powerVIQ #100 % power, effect size 0.075
+powerV # 100 % [96.38, 100.0] power
+powerD # 46 % [35.98, 56.26] power
+powerVD # 100 % [96.38, 100.0]
 
 
 ```
@@ -102,22 +107,27 @@ createNewData <- function (participants,visits,model){
   return(d)
 }
 
+```
 
-fixef(MLUModel)["Visit"] <- 0.20
+```{r}
+#setting minimally interesting effect sizes (defined as beta - 1 se)
+fixef(MnoInteraction)["Visit"] <- 0.23352-0.02454
 
-fixef(MLUModel)["DiagnosisTD"] <- -0.1
+fixef(MnoInteraction)["DiagnosisTD"] <- 0.29004-0.15175
 
-fixef(MLUModel)["verbalIQ"] <- 0.05
+fixef(MLUModel)["Visit:DiagnosisTD"] <- 0.25331-0.03712
 
 
-powerCurveV = powerCurve(MLUModel, fixed("Visit"),along="ID", nsim=200) 
-powerCurveD = powerCurve(MLUModel, fixed("DiagnosisTD"),along="ID", nsim=200)
-powerCurveIQ = powerCurve(MLUModel, fixed("verbalIQ"),along="ID", nsim=200)
+powerCurveV1 = powerCurve(MnoInteraction, fixed("Visit"),along="ID", nsim=100) 
+powerCurveD1 = powerCurve(MnoInteraction, fixed("Diagnosis"),along="ID", nsim=100)
+powerCurveDV1 = powerCurve(MLUModel, fixed("Visit:Diagnosis"),along="ID", nsim=100)
 
-powerCurveV
-powerCurveD
-powerCurveIQ
-plot(powerCurveDV)
+powerCurveV1
+powerCurveD1
+powerCurveDV1
+plot(powerCurveV1)
+plot(powerCurveD1)
+plot(powerCurveDV1)
 ```
 
 
@@ -128,24 +138,26 @@ plot(powerCurveDV)
 Assume you have only the resources to collect 30 kids (15 with ASD and 15 TDs). Identify the power for each relevant effect and discuss whether it's worth to run the study and why.
 
 ```{r}
-MLU = lmer(CHI_MLU ~ Visit + Diagnosis + (1 + Visit|ID), traindata, REML=F) 
+MLU = lmer(CHI_MLU ~ Visit * Diagnosis + (1 + Visit|ID), traindata, REML=F) 
 
 #Creating new data
 lol = createNewData(30, 6, MLU)
-lol
 
 #identifying power with the new data
 m30 = lmer(CHI_MLU ~ Visit + Diagnosis + (1 + Visit|ID), lol, REML=F )
+m30i = lmer(CHI_MLU ~ Visit * Diagnosis + (1 + Visit|ID), lol, REML=F )
+pV30 = powerSim(m30, fixed("Visit"), nsim=100)
+pV30 #42 % [32.20, 52.29], effect size 0.06
+pD30 = powerSim(m30, fixed("Diagnosis"), nsim=100)
+pD30 #21 %, [13.49, 30.29] effect size -0.15
+pDV30 = powerSim(m30i, fixed("Visit:Diagnosis"), nsim=100)
+pDV30 #8.00 % [3.52, 15.16] 
 
-pV30 = powerSim(m30, fixed("Visit"), nsim=200)
-pV30 #100 %, effect size 0.28
-pD30 = powerSim(m30, fixed("Diagnosis"), nsim=200)
-pD30 #6 %, effect size 0.11
 
-pcV30 = powerCurve(m30, fixed("Visit"),along="ID", nsim=200)
+pcV30 = powerCurve(m30, fixed("Visit"),along="ID", nsim=100)
 pcV30
 plot(pcV30) #6 participants seems to be enough
-pcD30 = powerCurve(m30, fixed("Diagnosis"),along="ID", nsim=200)
+pcD30 = powerCurve(m30, fixed("Diagnosis"),along="ID", nsim=100)
 ```
 
 
